@@ -1,6 +1,34 @@
 #include "utils.hpp"
 
-#include "debug.hpp"
+string data_type_to_string(data_type type) {
+	switch (type) {
+		case INT:
+			return "INT";
+		case SHORT_REAL:
+			return "SHORT_REAL";
+		case FLOAT:
+			return "FLOAT";
+		case STRING:
+			return "STRING";
+		default:
+			return "UNKNOWN";
+	}
+}
+
+unsigned short int get_port(char *port_string) {
+	try {
+		int temp = std::stoi(port_string);
+
+		if (temp < 1024 || temp > 65535) {
+			throw -1;
+		}
+	} catch (...) {
+		fprintf(stderr, "Port must be an integer between 1024 and 65535.\n");
+		exit(1);
+	}
+
+	return (unsigned short)std::stoi(port_string);
+}
 
 int epoll_add(int epollfd, int fd, uint32_t events) {
 	struct epoll_event ev;
@@ -20,29 +48,35 @@ int epoll_remove(int epollfd, int fd) {
 	return epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, &ev);
 }
 
-void send_msg(int sockfd, char *buf, int len) {
-	ssize_t bytes_sent, total_bytes_sent = 0;
+int epoll_wait_infinite(int epollfd, struct epoll_event *rev) {
+	return epoll_wait(epollfd, rev, 1, EPOLL_TIMEOUT_INFINITE);
+}
 
-	while (total_bytes_sent < sizeof(int)) {
-		bytes_sent =
-			send(sockfd, &len + total_bytes_sent, sizeof(int) - bytes_sent, 0);
-		DIE(bytes_sent < 0, "send ");
+void send_msg(int sockfd, char *buf, int len) {
+	int bytes_sent, total_bytes_sent = 0;
+
+	while (total_bytes_sent < (int)sizeof(int)) {
+		bytes_sent = send(sockfd, (char *)&len + total_bytes_sent,
+						  sizeof(int) - total_bytes_sent, 0);
+		DIE(bytes_sent < 0, "send");
+
 		total_bytes_sent += bytes_sent;
 	}
 
 	total_bytes_sent = 0;
 	while (total_bytes_sent < len) {
-		bytes_sent = send(sockfd, buf + total_bytes_sent, len - bytes_sent, 0);
+		bytes_sent = send(sockfd, buf + total_bytes_sent, len - total_bytes_sent, 0);
 		DIE(bytes_sent < 0, "send");
+
 		total_bytes_sent += bytes_sent;
 	}
 }
 
 int recv_msg(int sockfd, char *buf) {
-	ssize_t size, bytes_recv, total_bytes_recv = 0;
+	int size, bytes_recv, total_bytes_recv = 0;
 
-	while (total_bytes_recv < sizeof(int)) {
-		bytes_recv = recv(sockfd, &size + total_bytes_recv,
+	while (total_bytes_recv < (int)sizeof(int)) {
+		bytes_recv = recv(sockfd, (char *)&size + total_bytes_recv,
 						  sizeof(int) - total_bytes_recv, 0);
 
 		if (!bytes_recv) {
@@ -67,16 +101,4 @@ int recv_msg(int sockfd, char *buf) {
 	}
 
 	return total_bytes_recv;
-}
-
-int udp_recv(int sockfd, char *buf, struct sockaddr_in &addr_udp,
-			 socklen_t addr_udp_len) {
-	int bytes = recvfrom(sockfd, buf, addr_udp_len, 0,
-						 (struct sockaddr *)&addr_udp, &addr_udp_len);
-	if (!bytes) {
-		return 0;
-	}
-	DIE(bytes < 0, "recv");
-
-	return bytes;
 }

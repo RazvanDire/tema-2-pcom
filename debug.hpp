@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 
-#ifndef UTIL_H_
-#define UTIL_H_		1
+#ifndef DEBUG_HPP_
+#define DEBUG_HPP_		1
 
 #ifdef __cplusplus
 extern "C" {
