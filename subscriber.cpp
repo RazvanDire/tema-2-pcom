@@ -1,4 +1,4 @@
-#include "tcp_client.hpp"
+#include "utils.hpp"
 
 int sockfd;
 int epollfd;
@@ -8,7 +8,7 @@ void close_fds() {
 	close(epollfd);
 }
 
-int connect_to_server(const char* server_ip, const char* server_port) {
+int connect_to_server(const char *server_ip, const char *server_port) {
 	int rc;
 	int sock_opt;
 
@@ -34,44 +34,52 @@ int connect_to_server(const char* server_ip, const char* server_port) {
 	rc = inet_aton(server_ip, &addr.sin_addr);
 	DIE(rc == 0, "inet_aton");
 
-	rc = connect(sockfd, (struct sockaddr*)&addr, addrlen);
+	rc = connect(sockfd, (struct sockaddr *)&addr, addrlen);
 	DIE(rc < 0, "connect");
 
 	return sockfd;
 }
 
-void subscribe(char* topic) {
-	if (strchr(topic, ' ')) {
-		cerr << "Invalid topic.\n\n";
-		return;
-	}
+void subscribe() {
+	string topic;
+	cin >> topic;
+
+	char buf[BUFLEN];
+	strcpy(buf, "subscribe ");
+	strcat(buf, topic.c_str());
+
+	send_msg(sockfd, buf, strlen(buf) + 1);
 
 	cout << "Subscribed to topic " << topic << endl;
 }
 
-void unsubscribe(char* topic) {
-	if (strchr(topic, ' ')) {
-		cerr << "Invalid topic.\n\n";
-		return;
-	}
+void unsubscribe() {
+	string topic;
+	cin >> topic;
+
+	char buf[BUFLEN];
+	strcpy(buf, "unsubscribe ");
+	strcat(buf, topic.c_str());
+
+	send_msg(sockfd, buf, strlen(buf) + 1);
 
 	cout << "Unsubscribed from topic " << topic << endl;
 }
 
 void handle_user_input() {
-	char buf[BUFLEN];
-	fgets(buf, BUFLEN, stdin);
-	buf[strlen(buf) - 1] = '\0';
+	string cmd;
 
-	if (!strcmp(buf, "exit")) {
+	cin >> cmd;
+
+	if (cmd == "exit") {
 		close_fds();
 		exit(0);
 	}
 
-	if (!strncmp(buf, "subscribe ", 10)) {
-		subscribe(buf + 10);
-	} else if (!strncmp(buf, "unsubscribe ", 12)) {
-		unsubscribe(buf + 12);
+	if (cmd == "subscribe") {
+		subscribe();
+	} else if (cmd == "unsubscribe") {
+		unsubscribe();
 	} else {
 		cerr << "Invalid command.\n";
 	}
@@ -87,12 +95,13 @@ void print_payload(message buf) {
 	switch (buf.type) {
 		case INT:
 			memcpy(&byte, buf.payload, sizeof(uint8_t));
-			if (byte) {
-				cout << "-";
-			}
-
 			memcpy(&integer, buf.payload + sizeof(uint8_t), sizeof(uint32_t));
 			integer = ntohl(integer);
+
+			if (byte && integer) {
+				cout << "-";
+			}
+			
 			cout << integer << endl;
 
 			break;
@@ -108,19 +117,19 @@ void print_payload(message buf) {
 
 		case FLOAT:
 			memcpy(&byte, buf.payload, sizeof(uint8_t));
-			if (byte) {
-				cout << "-";
-			}
-
 			memcpy(&integer, buf.payload + sizeof(uint8_t), sizeof(uint32_t));
 			integer = ntohl(integer);
+
+			if (byte && integer) {
+				cout << "-";
+			}
 
 			memcpy(&decimals, buf.payload + sizeof(uint8_t) + sizeof(uint32_t),
 				   sizeof(uint8_t));
 			for (i = 0; i < decimals; i++) {
 				base *= 10;
 			}
-			//cout << integer / base << "." << integer % base << endl;
+			// cout << integer / base << "." << integer % base << endl;
 			cout << fixed << setprecision(decimals) << (double)integer / base
 				 << endl;
 
@@ -139,7 +148,7 @@ void handle_server_input() {
 	int len;
 	sockaddr_in addr;
 
-	len = recv_msg(sockfd, (char*)&addr);
+	len = recv_msg(sockfd, (char *)&addr);
 	DIE(len < 0, "recv");
 
 	if (len == 0) {
@@ -148,7 +157,7 @@ void handle_server_input() {
 	}
 
 	message buf;
-	len = recv_msg(sockfd, (char*)&buf);
+	len = recv_msg(sockfd, (char *)&buf);
 	DIE(len < 0, "recv");
 
 	cout << inet_ntoa(addr.sin_addr) << ":" << ntohs(addr.sin_port) << " - "
@@ -156,7 +165,7 @@ void handle_server_input() {
 	print_payload(buf);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
 	setvbuf(stdout, NULL, _IONBF, BUFSIZ);
 
 	if (argc != 4) {

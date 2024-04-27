@@ -1,6 +1,25 @@
-#include "debug.hpp"
 #include "server.hpp"
-#include "utils.hpp"
+
+string wildcard_to_regex(string s) {
+	regex star("\\*");
+    regex plus("\\+");
+
+	s = regex_replace(s, star, ".*");
+	s = regex_replace(s, plus, "[^/]*");
+
+	return s;
+}
+
+bool match_topic(string ref, string topic) {
+	if (topic == ref) {
+		return true;
+	}
+
+	ref = wildcard_to_regex(ref);
+	regex r(ref);
+
+	return regex_match(topic, r);
+}
 
 int tcp_create_listener(unsigned short port, int backlog) {
 	struct sockaddr_in address;
@@ -62,12 +81,9 @@ int udp_create_listener(unsigned short port) {
 
 int recv_udp(int sockfd, char *buf, int len, struct sockaddr_in *addr,
 			 socklen_t addrlen) {
-	int bytes =
+	int bytes_recv =
 		recvfrom(sockfd, buf, len, 0, (struct sockaddr *)addr, &addrlen);
-	if (!bytes) {
-		return 0;
-	}
-	DIE(bytes < 0, "recv");
+	DIE(bytes_recv < 0, "recv");
 
-	return bytes;
+	return bytes_recv;
 }

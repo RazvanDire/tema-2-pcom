@@ -3,7 +3,7 @@ CFLAGS = -g -Wall
 
 TARGET = server subscriber
 SERVER_SRCS = server.cpp utils.cpp server_utils.cpp
-SUBSCRIBER_SRCS = tcp_client.cpp utils.cpp
+SUBSCRIBER_SRCS = subscriber.cpp utils.cpp
 SERVER_OBJS = $(SERVER_SRCS:.cpp=.o)
 SUBSCRIBER_OBJS = $(SUBSCRIBER_SRCS:.cpp=.o)
 
@@ -17,7 +17,7 @@ server: $(SERVER_OBJS)
 subscriber: $(SUBSCRIBER_OBJS)
 	$(CC) $(CFLAGS) $^ -o $@
 
-%.o : %.cpp %.hpp
+%.o : %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

@@ -1,0 +1,48 @@
+a_non_negative_int
+a_negative_int
+a_larger_value
+a_large_negative_value
+abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx
+that_is_small_short_real
+that_is_big_short_real
+that_is_integer_short_real
+float_seventeen
+float_minus_seventeen
+a_strange_float
+a_negative_strange_float
+a_subunitary_float
+a_negative_subunitary_float
+ana_string_announce
+huge_string
+subscribe a_non_negative_int
+Subscribed to topic a_non_negative_int
+subscribe a_negative_int
+Subscribed to topic a_negative_int
+subscribe a_larger_value
+Subscribed to topic a_larger_value
+subscribe a_large_negative_value
+Subscribed to topic a_large_negative_value
+subscribe abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx
+Subscribed to topic abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx
+subscribe that_is_small_short_real
+Subscribed to topic that_is_small_short_real
+subscribe that_is_big_short_real
+Subscribed to topic that_is_big_short_real
+subscribe that_is_integer_short_real
+Subscribed to topic that_is_integer_short_real
+subscribe float_seventeen
+Subscribed to topic float_seventeen
+subscribe float_minus_seventeen
+Subscribed to topic float_minus_seventeen
+subscribe a_strange_float
+Subscribed to topic a_strange_float
+subscribe a_negative_strange_float
+Subscribed to topic a_negative_strange_float
+subscribe a_subunitary_float
+Subscribed to topic a_subunitary_float
+subscribe a_negative_subunitary_float
+Subscribed to topic a_negative_subunitary_float
+subscribe ana_string_announce
+Subscribed to topic ana_string_announce
+subscribe huge_string
+Subscribed to topic huge_string

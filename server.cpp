@@ -4,24 +4,31 @@ int epollfd;
 int tcp_listenfd;
 int udp_listenfd;
 unsigned short port;
+
+vector<pair<string, unordered_set<string>>> topics;
 unordered_map<int, string> sockfd_to_id;
 unordered_map<string, int> id_to_sockfd;
-unordered_set<string> ids;
-unordered_map<string, unordered_set<string>> topics;
-unordered_map<string, unordered_set<string>> wildcards;
+unordered_set<string> connected_clients;
 
 void init_listeners() {
-	tcp_listenfd = tcp_create_listener(port, 5);
+	tcp_listenfd = tcp_create_listener(port, MAX_CONNECTIONS);
 	udp_listenfd = udp_create_listener(port);
 }
 
 void init_epoll() {
+	int rc;
+
 	epollfd = epoll_create1(0);
 	DIE(epollfd < 0, "epoll_create1");
 
-	epoll_add(epollfd, tcp_listenfd, EPOLLIN);
-	epoll_add(epollfd, udp_listenfd, EPOLLIN);
-	epoll_add(epollfd, STDIN_FILENO, EPOLLIN);
+	rc = epoll_add(epollfd, tcp_listenfd, EPOLLIN);
+	DIE(rc < 0, "epoll add tcp");
+
+	rc = epoll_add(epollfd, udp_listenfd, EPOLLIN);
+	DIE(rc < 0, "epoll add udp");
+
+	rc = epoll_add(epollfd, STDIN_FILENO, EPOLLIN);
+	DIE(rc < 0, "epoll add stdin");
 }
 
 void close_fds() {
@@ -31,15 +38,13 @@ void close_fds() {
 }
 
 void handle_stdin() {
-	char buf[BUFLEN];
+	string cmd;
+	cin >> cmd;
 
-	fgets(buf, BUFLEN, stdin);
-	buf[strlen(buf) - 1] = '\0';
-
-	if (!strcmp(buf, "exit")) {
+	if (cmd == "exit") {
 		for (auto it = sockfd_to_id.begin(); it != sockfd_to_id.end(); it++) {
-			close(it->first);
 			epoll_remove(epollfd, it->first);
+			close(it->first);
 		}
 
 		close_fds();
@@ -59,58 +64,28 @@ void handle_new_tcp_connection() {
 	sockfd = accept(tcp_listenfd, (struct sockaddr *)&addr, &addrlen);
 	DIE(sockfd < 0, "accept");
 
-	rc = epoll_add(epollfd, sockfd, EPOLLIN);
-	DIE(rc < 0, "epoll add");
-
 	char id_array[11];
 	recv_msg(sockfd, id_array);
 
 	string id(id_array);
 
-	if (ids.find(id) != ids.end()) {
-		cout << "Client " << id << " already connected.\n";
+	if (connected_clients.find(id) != connected_clients.end()) {
 		close(sockfd);
-		epoll_remove(epollfd, sockfd);
+		cout << "Client " << id << " already connected.\n";
+
 		return;
 	}
 
-	ids.insert(id);
+	rc = epoll_add(epollfd, sockfd, EPOLLIN);
+	DIE(rc < 0, "epoll add");
+
+	connected_clients.insert(id);
 	sockfd_to_id[sockfd] = id;
 	id_to_sockfd[id] = sockfd;
 
 	cout << "New client " << id << " connected from "
 		 << inet_ntoa(addr.sin_addr) << ":" << ntohs(addr.sin_port) << "."
 		 << endl;
-}
-
-void search_topics(message buf, struct sockaddr_in addr) {
-	string topic(buf.topic);
-
-	if (topics.find(topic) == topics.end()) {
-		return;
-	}
-
-	for (auto it = topics[topic].begin(); it != topics[topic].end(); it++) {
-		int sockfd = id_to_sockfd[*it];
-		send_msg(sockfd, (char *)&addr, sizeof(struct sockaddr_in));
-		send_msg(sockfd, (char *)&buf, sizeof(message));
-	}
-}
-
-void search_wildcards(message buf, struct sockaddr_in addr) {
-	// if (topics.find(topic) != topics.end()) {
-	// 	for (auto it = topics[topic].begin(); it != topics[topic].end(); it++) {
-	// 		int sockfd = id_to_sockfd[*it];
-	// 		send_msg(sockfd, message.c_str());
-	// 	}
-	// }
-
-	// if (wildcards.find(topic) != wildcards.end()) {
-	// 	for (auto it = wildcards[topic].begin(); it != wildcards[topic].end();
-	// it++) { 		int sockfd = id_to_sockfd[*it]; 		send_msg(sockfd,
-	// message.c_str());
-	// 	}
-	// }
 }
 
 void handle_udp() {
@@ -122,13 +97,48 @@ void handle_udp() {
 	rc = recv_udp(udp_listenfd, (char *)&buf, sizeof(message), &addr, addrlen);
 	DIE(rc < 0, "recv_udp");
 
-	// cout << inet_ntoa(addr.sin_addr) << ":" << ntohs(addr.sin_port) << " - "
-	// 	 << buf.topic << " - " << buf.payload << '\n';
+	string topic(buf.topic);
 
-	if (strchr(buf.topic, '*') || strchr(buf.topic, '+')) {
-		search_wildcards(buf, addr);
-	} else {
-		search_topics(buf, addr);
+	unordered_set<string> sent_to;
+	for (unsigned int i = 0; i < topics.size(); i++) {
+		if (match_topic(topics[i].first, topic)) {
+			for (auto it = topics[i].second.begin();
+				 it != topics[i].second.end(); it++) {
+				if (connected_clients.find(*it) == connected_clients.end() ||
+					sent_to.find(*it) != sent_to.end()) {
+					continue;
+				}
+
+				int sockfd = id_to_sockfd[*it];
+				send_msg(sockfd, (char *)&addr, sizeof(struct sockaddr_in));
+				send_msg(sockfd, (char *)&buf, sizeof(message));
+
+				sent_to.insert(*it);
+			}
+		}
+	}
+}
+
+void subscribe_client(string id, char *topic_array) {
+	string topic(topic_array);
+
+	for (unsigned int i = 0; i < topics.size(); i++) {
+		if (topics[i].first == topic) {
+			topics[i].second.insert(id);
+			return;
+		}
+	}
+
+	topics.push_back({topic, {id}});
+}
+
+void unsubscribe_client(string id, char *topic_array) {
+	string topic(topic_array);
+
+	for (unsigned int i = 0; i < topics.size(); i++) {
+		if (match_topic(topic, topics[i].first)) {
+			topics[i].second.erase(id);
+		}
 	}
 }
 
@@ -143,14 +153,21 @@ void handle_client(int sockfd) {
 	if (rc == 0) {
 		close(sockfd);
 		epoll_remove(epollfd, sockfd);
+
 		cout << "Client " << sockfd_to_id[sockfd] << " disconnected.\n";
-		ids.erase(sockfd_to_id[sockfd]);
+
+		connected_clients.erase(sockfd_to_id[sockfd]);
 		id_to_sockfd.erase(sockfd_to_id[sockfd]);
 		sockfd_to_id.erase(sockfd);
+
 		return;
 	}
 
-	cout << "Received: " << buf << '\n';
+	if (buf[0] == 's') {
+		subscribe_client(sockfd_to_id[sockfd], buf + 10);
+	} else if (buf[0] == 'u') {
+		unsubscribe_client(sockfd_to_id[sockfd], buf + 12);
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -164,13 +181,6 @@ int main(int argc, char *argv[]) {
 	port = get_port(argv[1]);
 	init_listeners();
 	init_epoll();
-
-	topics["a_non_negative_int"].insert("salut");
-	topics["a_negative_int"].insert("salut");
-	topics["a_larger_value"].insert("salut");
-	topics["that_is_small_short_real"].insert("salut");
-	topics["a_negative_subunitary_float"].insert("salut");
-	topics["ana_string_announce"].insert("salut");
 
 	while (true) {
 		struct epoll_event rev;
