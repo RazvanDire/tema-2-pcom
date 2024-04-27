@@ -89,7 +89,7 @@ void print_payload(message buf) {
 	uint8_t byte;
 	uint16_t short_real;
 	uint32_t integer;
-	int base = 1;
+	int base = 1, remainder;
 	uint8_t decimals, i;
 
 	switch (buf.type) {
@@ -101,7 +101,7 @@ void print_payload(message buf) {
 			if (byte && integer) {
 				cout << "-";
 			}
-			
+
 			cout << integer << endl;
 
 			break;
@@ -109,9 +109,19 @@ void print_payload(message buf) {
 		case SHORT_REAL:
 			memcpy(&short_real, buf.payload, sizeof(uint16_t));
 			short_real = ntohs(short_real);
-			// cout << short_real / 100 << "." << short_real % 100 << endl;
-			cout << fixed << setprecision(2) << (double)short_real / 100
-				 << endl;
+
+			decimals = 2;
+			remainder = short_real % 100;
+			while (remainder) {
+				decimals--;
+				remainder /= 10;
+			}
+
+			cout << short_real / 100 << ".";
+			for (byte = 0; byte < decimals; byte++) {
+				cout << "0";
+			}
+			cout << short_real % 100 << endl;
 
 			break;
 
@@ -129,9 +139,18 @@ void print_payload(message buf) {
 			for (i = 0; i < decimals; i++) {
 				base *= 10;
 			}
-			// cout << integer / base << "." << integer % base << endl;
-			cout << fixed << setprecision(decimals) << (double)integer / base
-				 << endl;
+
+			remainder = integer % base;
+			while (remainder) {
+				decimals--;
+				remainder /= 10;
+			}
+
+			cout << integer / base << ".";
+			for (byte = 0; byte < decimals; byte++) {
+				cout << "0";
+			}
+			cout << integer % base << endl;
 
 			break;
 
