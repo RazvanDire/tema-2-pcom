@@ -23,7 +23,6 @@ int connect_to_server(const char *server_ip, const char *server_port) {
 	rc = setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(int));
 	DIE(rc < 0, "setsockopt SO_REUSEADDR");
 
-	// disable Nagle's algorithm
 	sock_opt = 1;
 	rc = setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &sock_opt, sizeof(int));
 	DIE(rc < 0, "setsockopt TCP_NODELAY");
@@ -68,7 +67,6 @@ void unsubscribe() {
 
 void handle_user_input() {
 	string cmd;
-
 	cin >> cmd;
 
 	if (cmd == "exit") {

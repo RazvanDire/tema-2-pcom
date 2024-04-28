@@ -65,7 +65,8 @@ void send_msg(int sockfd, char *buf, int len) {
 
 	total_bytes_sent = 0;
 	while (total_bytes_sent < len) {
-		bytes_sent = send(sockfd, buf + total_bytes_sent, len - total_bytes_sent, 0);
+		bytes_sent =
+			send(sockfd, buf + total_bytes_sent, len - total_bytes_sent, 0);
 		DIE(bytes_sent < 0, "send");
 
 		total_bytes_sent += bytes_sent;

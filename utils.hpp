@@ -21,7 +21,6 @@ using namespace std;
 
 #define BUFLEN 1500
 #define EPOLL_TIMEOUT_INFINITE -1
-#define MAX_CONNECTIONS 1024
 
 enum data_type : uint8_t { INT, SHORT_REAL, FLOAT, STRING };
 

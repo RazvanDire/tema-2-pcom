@@ -2,7 +2,7 @@
 
 string wildcard_to_regex(string s) {
 	regex star("\\*");
-    regex plus("\\+");
+	regex plus("\\+");
 
 	s = regex_replace(s, star, ".*");
 	s = regex_replace(s, plus, "[^/]*");
@@ -35,7 +35,6 @@ int tcp_create_listener(unsigned short port, int backlog) {
 	rc = setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &sock_opt, sizeof(int));
 	DIE(rc < 0, "setsockopt SO_REUSEADDR");
 
-	// disable Nagle's algorithm
 	sock_opt = 1;
 	rc = setsockopt(listenfd, IPPROTO_TCP, TCP_NODELAY, &sock_opt, sizeof(int));
 	DIE(rc < 0, "setsockopt TCP_NODELAY");

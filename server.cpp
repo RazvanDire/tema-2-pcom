@@ -11,7 +11,7 @@ unordered_map<string, int> id_to_sockfd;
 unordered_set<string> connected_clients;
 
 void init_listeners() {
-	tcp_listenfd = tcp_create_listener(port, MAX_CONNECTIONS);
+	tcp_listenfd = tcp_create_listener(port, 1024);
 	udp_listenfd = udp_create_listener(port);
 }
 
@@ -60,7 +60,6 @@ void handle_new_tcp_connection() {
 	struct sockaddr_in addr;
 	int rc;
 
-	/* Accept new connection. */
 	sockfd = accept(tcp_listenfd, (struct sockaddr *)&addr, &addrlen);
 	DIE(sockfd < 0, "accept");
 
